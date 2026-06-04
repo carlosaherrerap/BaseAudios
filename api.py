@@ -1,15 +1,3 @@
-"""
-api.py
-======
-API REST mínima con Flask para servir búsquedas por TELEFONO.
-Optimizada con paginación y query parametrizada.
-
-Instalación:
-    pip install flask flask-cors psycopg2-binary python-dotenv
-Ejecución:
-    python api.py
-"""
-
 import os
 import logging
 from flask import Flask, request, jsonify
