@@ -1,0 +1,31 @@
+services:
+  postgres_audios:
+    image: postgres:16-alpine
+    container_name: audiosdb_container
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: AUDIOSDB
+      POSTGRES_USER: audios_user
+      POSTGRES_PASSWORD: audios2024
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5439:5432"          # Puerto externo 5439 → interno 5432
+    volumes:
+      - audiosdb_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql   # Crea tabla e índices al primer arranque
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U audios_user -d AUDIOSDB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - audios_net
+
+volumes:
+  audiosdb_data:
+    driver: local
+
+networks:
+  audios_net:
+    driver: bridge
