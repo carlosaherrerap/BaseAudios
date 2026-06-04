@@ -22,6 +22,20 @@ services:
     networks:
       - audios_net
 
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin_container
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: audiosdb@informaperu.com
+      PGADMIN_DEFAULT_PASSWORD: sincronizacionadjunta
+    ports:
+      - "5050:80"            
+    networks:
+      - audios_net
+    depends_on:
+      - postgres_audios
+
 volumes:
   audiosdb_data:
     driver: local
