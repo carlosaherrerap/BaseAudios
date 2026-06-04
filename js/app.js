@@ -1,28 +1,35 @@
 // ── Configuración ──────────────────────────────────────────────
-const API_BASE  = "http://localhost:5000/api";
-const PAGE_SIZE = 50;
+// Detecta si se abrió directo (file://) o si se está usando un servidor local (Live Server 127.0.0.1/localhost)
+const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const isFile = window.location.protocol === 'file:';
+
+const API_BASE = (isLocal || isFile) 
+  ? "http://localhost:5000/api" 
+  : `${window.location.origin}/api`;
+
+const PAGE_SIZE = 10;
 
 const COLUMNS = [
-  { key: "ORDER",          label: "Nº" },
-  { key: "TELEFONO",       label: "Teléfono", special: "telefono" },
-  { key: "PESO",           label: "Peso",     special: "peso" },
-  { key: "RUTA",           label: "Ruta",     special: "ruta" },
-  { key: "NOMBRE_COMPLETO",label: "Nombre Completo", special: "nombre" },
-  { key: "AUDIO",          label: "Reproductor", special: "audio" },
+  { key: "ORDER", label: "Nº" },
+  { key: "TELEFONO", label: "Teléfono", special: "telefono" },
+  { key: "PESO", label: "Peso", special: "peso" },
+  { key: "RUTA", label: "Ruta", special: "ruta" },
+  { key: "NOMBRE_COMPLETO", label: "Nombre Completo", special: "nombre" },
+  { key: "AUDIO", label: "Reproductor", special: "audio" },
 ];
 
 // ── State ──────────────────────────────────────────────────────
 let state = { query: "", page: 1, totalPages: 1, debounceTimer: null };
 
 // ── DOM refs ───────────────────────────────────────────────────
-const searchInput  = document.getElementById("searchInput");
-const clearBtn     = document.getElementById("clearBtn");
-const spinner      = document.getElementById("spinner");
+const searchInput = document.getElementById("searchInput");
+const clearBtn = document.getElementById("clearBtn");
+const spinner = document.getElementById("spinner");
 const resultsCount = document.getElementById("resultsCount");
-const contentArea  = document.getElementById("contentArea");
-const pagination   = document.getElementById("pagination");
-const statusDot    = document.getElementById("statusDot");
-const statusText   = document.getElementById("statusText");
+const contentArea = document.getElementById("contentArea");
+const pagination = document.getElementById("pagination");
+const statusDot = document.getElementById("statusDot");
+const statusText = document.getElementById("statusText");
 
 // ── Health check ───────────────────────────────────────────────
 async function checkHealth() {
@@ -30,11 +37,11 @@ async function checkHealth() {
     const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(4000) });
     const data = await res.json();
     if (data.status === "ok") {
-      statusDot.className  = "dot online";
+      statusDot.className = "dot online";
       statusText.textContent = "API En Línea";
     } else throw new Error();
   } catch {
-    statusDot.className  = "dot offline";
+    statusDot.className = "dot offline";
     statusText.textContent = "API Desconectada";
   }
 }
@@ -42,7 +49,7 @@ async function checkHealth() {
 // ── Search ─────────────────────────────────────────────────────
 async function search(query, page = 1) {
   state.query = query;
-  state.page  = page;
+  state.page = page;
 
   if (query.length === 0) {
     renderEmpty("default");
@@ -62,7 +69,7 @@ async function search(query, page = 1) {
 
   try {
     const url = `${API_BASE}/buscar?q=${encodeURIComponent(query)}&page=${page}`;
-    const res  = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
 
@@ -71,7 +78,7 @@ async function search(query, page = 1) {
     if (data.results.length === 0) {
       renderEmpty("noresults");
       resultsCount.innerHTML = "";
-      pagination.innerHTML   = "";
+      pagination.innerHTML = "";
     } else {
       renderTable(data.results, query);
       renderResultsCount(data.total, page, data.results.length);
@@ -80,7 +87,7 @@ async function search(query, page = 1) {
   } catch (err) {
     renderEmpty("error");
     resultsCount.innerHTML = "";
-    pagination.innerHTML   = "";
+    pagination.innerHTML = "";
     console.error(err);
   } finally {
     spinner.classList.remove("active");
@@ -90,22 +97,21 @@ async function search(query, page = 1) {
 
 // ── Render: Table ──────────────────────────────────────────────
 function renderTable(rows, query) {
-  const thead = `<thead><tr>${
-    COLUMNS.map(c =>
-      `<th class="${c.special === "telefono" ? "col-telefono" : ""}">${c.label}</th>`
-    ).join("")
-  }</tr></thead>`;
+  const thead = `<thead><tr>${COLUMNS.map(c =>
+    `<th class="${c.special === "telefono" ? "col-telefono" : ""}">${c.label}</th>`
+  ).join("")
+    }</tr></thead>`;
 
   const tbody = `<tbody>${rows.map((row, index) => {
     return `<tr class="fade-in" style="animation-delay: ${index * 0.01}s">${COLUMNS.map(c => {
-      
+
       if (c.key === "ORDER") {
         const orderNum = (state.page - 1) * PAGE_SIZE + index + 1;
         return `<td class="cell-order">${orderNum}</td>`;
       }
 
       let val = row[c.key] ?? "";
-      
+
       if (c.special === "telefono") {
         const highlighted = String(val).replace(
           new RegExp(`^(${escapeRegex(query)})`, "i"),
@@ -137,20 +143,26 @@ function renderTable(rows, query) {
       if (c.special === "audio") {
         const rutaStr = String(row["RUTA"] || "").trim();
         const nombreStr = String(row["NOMBRE_COMPLETO"] || "").trim();
-        
+
         if (!rutaStr || !nombreStr || rutaStr === "null" || nombreStr === "null") {
-           return `<td><span style="color:var(--text-muted);font-size:0.8rem">No disponible</span></td>`;
+          return `<td><span style="color:var(--text-muted);font-size:0.8rem">No disponible</span></td>`;
         }
 
         let fullPath = rutaStr;
         if (!fullPath.endsWith(nombreStr)) {
-           if (!fullPath.endsWith("\\") && !fullPath.endsWith("/")) {
-              fullPath += "\\"; 
-           }
-           fullPath += nombreStr;
+          if (!fullPath.endsWith("\\") && !fullPath.endsWith("/")) {
+            fullPath += "\\";
+          }
+          fullPath += nombreStr;
+        }
+        
+        // Asegurarse de que siempre termine en .mp3
+        if (!fullPath.toLowerCase().endsWith(".mp3")) {
+          fullPath += ".mp3";
         }
 
-        const urlPath = "file:///" + fullPath.replace(/\\/g, "/");
+        // Usar el endpoint de la API para servir el audio y evadir el error de 'Not allowed to load local resource'
+        const urlPath = `${API_BASE}/audio?path=${encodeURIComponent(fullPath)}`;
 
         return `<td>
            <audio controls class="audio-player" src="${urlPath}" preload="none" title="${escapeHtml(fullPath)}">
@@ -173,10 +185,10 @@ function renderTable(rows, query) {
 
 // ── Render: Empty states ───────────────────────────────────────
 const STATES = {
-  default:   { icon: "bi-search", title: "Encuentra tus audios",  desc: "Escribe el número de teléfono en la barra superior para explorar la base de datos." },
-  short:     { icon: "bi-keyboard",  title: "Sigue escribiendo...",  desc: "Ingresa al menos 3 dígitos para obtener coincidencias precisas." },
-  noresults: { icon: "bi-inbox", title: "No hay coincidencias",       desc: "No hemos encontrado ningún registro de audio asociado a ese número." },
-  error:     { icon: "bi-plug-fill", title: "Error de conexión",    desc: "No se pudo establecer conexión con el servidor de la API." },
+  default: { icon: "bi-search", title: "Encuentra tus audios", desc: "Escribe el número de teléfono en la barra superior para explorar la base de datos." },
+  short: { icon: "bi-keyboard", title: "Sigue escribiendo...", desc: "Ingresa al menos 3 dígitos para obtener coincidencias precisas." },
+  noresults: { icon: "bi-inbox", title: "No hay coincidencias", desc: "No hemos encontrado ningún registro de audio asociado a ese número." },
+  error: { icon: "bi-plug-fill", title: "Error de conexión", desc: "No se pudo establecer conexión con el servidor de la API." },
 };
 
 function renderEmpty(type) {
@@ -192,7 +204,7 @@ function renderEmpty(type) {
 // ── Render: Results count ──────────────────────────────────────
 function renderResultsCount(total, page, count) {
   const from = (page - 1) * PAGE_SIZE + 1;
-  const to   = from + count - 1;
+  const to = from + count - 1;
   resultsCount.innerHTML =
     `Visualizando <strong>${from} – ${to}</strong> de <strong>${total.toLocaleString("es-ES")}</strong> audios encontrados`;
 }
@@ -213,7 +225,7 @@ function renderPagination(current, total) {
   const unique = [...new Set(pages)].sort((a, b) => a - b);
 
   let html = `<button class="page-btn" id="prevPage" ${current === 1 ? "disabled" : ""}><i class="bi bi-chevron-left"></i></button>`;
-  let prev  = 0;
+  let prev = 0;
   for (const p of unique) {
     if (p - prev > 1) html += `<span class="page-btn" style="cursor:default;opacity:.2;border:none;background:transparent;">...</span>`;
     html += `<button class="page-btn ${p === current ? "active" : ""}" data-page="${p}">${p}</button>`;
@@ -225,8 +237,8 @@ function renderPagination(current, total) {
 
   pagination.querySelectorAll("[data-page]").forEach(btn => {
     btn.addEventListener("click", () => {
-       window.scrollTo({ top: 0, behavior: 'smooth' });
-       search(state.query, +btn.dataset.page);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      search(state.query, +btn.dataset.page);
     });
   });
   pagination.querySelector("#prevPage")?.addEventListener("click", () => {

@@ -23,8 +23,12 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder=os.path.abspath(os.path.dirname(__file__)), static_url_path='')
 CORS(app)  # Permite peticiones desde el HTML en cualquier origen
+
+@app.route("/")
+def index():
+    return app.send_static_file("index.html")
 
 DB_CONFIG = {
     "host":     os.getenv("DB_HOST",     "localhost"),
@@ -34,7 +38,8 @@ DB_CONFIG = {
     "password": os.getenv("DB_PASSWORD", ""),
 }
 
-PAGE_SIZE = 50   # Máximo de resultados por página
+PAGE_SIZE = 10   # Máximo de resultados por página
+
 
 
 def get_connection():
@@ -97,6 +102,8 @@ def buscar():
     })
 
 
+from flask import send_file
+
 @app.route("/api/health", methods=["GET"])
 def health():
     """Endpoint de salud para verificar que la API está activa."""
@@ -107,6 +114,22 @@ def health():
     except Exception:
         return jsonify({"status": "error", "db": "disconnected"}), 503
 
+@app.route("/api/audio", methods=["GET"])
+def serve_audio():
+    """Sirve archivos de audio desde el disco local para evadir bloqueos de CORS/Seguridad del navegador."""
+    audio_path = request.args.get("path")
+    if not audio_path:
+        return jsonify({"error": "Parámetro 'path' es requerido."}), 400
+        
+    # Verificar que el archivo existe
+    if not os.path.exists(audio_path) or not os.path.isfile(audio_path):
+        return jsonify({"error": "Archivo no encontrado."}), 404
+        
+    try:
+        return send_file(audio_path, conditional=True)
+    except Exception as e:
+        logger.error(f"Error sirviendo audio {audio_path}: {e}")
+        return jsonify({"error": "Error al leer el archivo de audio."}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)
