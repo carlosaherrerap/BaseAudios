@@ -36,13 +36,6 @@ def get_connection():
 
 @app.route("/api/buscar", methods=["GET"])
 def buscar():
-    """
-    Búsqueda por TELEFONO y filtrado opcional por MES.
-    Query params:
-        q     → número de teléfono (parcial o completo)
-        page  → página de resultados (default: 1)
-        mes   → mes a buscar o "TODOS" (default: TODOS)
-    """
     query  = request.args.get("q", "").strip()
     page   = max(1, int(request.args.get("page", 1)))
     mes    = request.args.get("mes", "TODOS").strip().upper()
@@ -50,42 +43,54 @@ def buscar():
 
     if not query:
         return jsonify({"error": "El parámetro 'q' es requerido."}), 400
-
     if len(query) < 3:
         return jsonify({"error": "Ingresa al menos 3 caracteres."}), 400
 
-    # Construcción de la consulta dinámica
-    where_clauses = ['"TELEFONO" LIKE %s']
-    params = [f"{query}%"]
+    meses = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE']
 
-    if mes != "TODOS":
-        where_clauses.append('"MES" = %s')
-        params.append(mes)
+    tables_to_query = []
+    if mes == "TODOS":
+        tables_to_query = [f'"AUDIOS_{m}"' for m in meses]
+    else:
+        tables_to_query = [f'"AUDIOS_{mes}"']
 
-    where_sql = " AND ".join(where_clauses)
+    where_sql = '"TELEFONO" LIKE %s'
+    param_like = f"{query}%"
 
-    sql_data = f"""
-        SELECT
-            "MES", "DIA", "INDICE", "YEAR",
-            "COD1", "AoP", "COD2", "COD3",
-            "TELEFONO", "PESO", "RUTA",
-            "NOMBRE_COMPLETO", "BLOQUE_7"
-        FROM "AUDIOS"
-        WHERE {where_sql}
+    # Construir SQL dinámico para soportar 1 o 12 tablas
+    select_parts = []
+    count_parts = []
+    
+    for table in tables_to_query:
+        select_parts.append(f"""
+            SELECT
+                "MES", "DIA", "INDICE", "YEAR",
+                "COD1", "AoP", "COD2", "COD3",
+                "TELEFONO", "PESO", "RUTA",
+                "NOMBRE_COMPLETO", "BLOQUE_7"
+            FROM {table}
+            WHERE {where_sql}
+        """)
+        count_parts.append(f"SELECT COUNT(*) as c FROM {table} WHERE {where_sql}")
+
+    # Unir todas las consultas con UNION ALL
+    sql_data = " UNION ALL ".join(select_parts) + """
         ORDER BY "YEAR" DESC, "MES" DESC, "DIA" DESC
         LIMIT %s OFFSET %s
     """
-    sql_count = f"""
-        SELECT COUNT(*) FROM "AUDIOS" WHERE {where_sql}
-    """
     
-    params_data = params + [PAGE_SIZE, offset]
+    sql_count = f"SELECT SUM(c) as count FROM ({' UNION ALL '.join(count_parts)}) as total_counts"
+
+    # Duplicar el parámetro para cada tabla en el UNION
+    params_data = [param_like] * len(tables_to_query) + [PAGE_SIZE, offset]
+    params_count = [param_like] * len(tables_to_query)
 
     try:
         conn = get_connection()
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute(sql_count, tuple(params))
-            total = cur.fetchone()["count"]
+            cur.execute(sql_count, tuple(params_count))
+            res = cur.fetchone()
+            total = res["count"] if res and res["count"] else 0
 
             cur.execute(sql_data, tuple(params_data))
             rows = cur.fetchall()
