@@ -30,6 +30,31 @@ PAGE_SIZE = 10   # Máximo de resultados por página
 
 
 
+def get_modified_path(original_path, target="evidencias"):
+    if not original_path:
+        return ""
+    # Normalize all slashes to backslashes
+    normalized = original_path.replace('/', '\\')
+    parts = [p for p in normalized.split('\\') if p]
+    # Filter out 'example' (case-insensitive)
+    parts_clean = [p for p in parts if p.lower() != 'example']
+    
+    if len(parts_clean) >= 2:
+        # Prepend 'speechToText_' to the second to last directory
+        parts_clean[-2] = f"speechToText_{parts_clean[-2]}"
+        # Replace the last element (ID) with the target folder name
+        new_parts = parts_clean[:-1] + [target]
+        
+        prefix = ""
+        if original_path.startswith('\\\\'):
+            prefix = "\\\\"
+        elif original_path.startswith('\\'):
+            prefix = "\\"
+        return prefix + '\\'.join(new_parts)
+        
+    return original_path
+
+
 def get_connection():
     return psycopg2.connect(**DB_CONFIG)
 
@@ -99,13 +124,51 @@ def buscar():
         logger.error(f"DB error: {e}")
         return jsonify({"error": "Error de base de datos."}), 500
 
+    results = []
+    for r in rows:
+        row_dict = dict(r)
+        ruta_str = str(row_dict.get("RUTA") or "").strip()
+        nombre_str = str(row_dict.get("NOMBRE_COMPLETO") or "").strip()
+        
+        # Combine RUTA and NOMBRE_COMPLETO for AUDIO field
+        if ruta_str and nombre_str:
+            if not (ruta_str.endswith("\\") or ruta_str.endswith("/")):
+                audio_path = f"{ruta_str}\\{nombre_str}"
+            else:
+                audio_path = f"{ruta_str}{nombre_str}"
+        else:
+            audio_path = ruta_str or nombre_str
+            
+        # Check gestion status (.txt file presence)
+        gestion_status = "yellow"
+        if ruta_str and nombre_str:
+            filename = f"{nombre_str}.txt"
+            
+            # Check in 'evidencias' folder
+            evidencias_dir = get_modified_path(ruta_str, "evidencias")
+            evidencias_file = os.path.join(evidencias_dir, filename)
+            
+            # Check in 'filtrado' folder
+            filtrado_dir = get_modified_path(ruta_str, "filtrado")
+            filtrado_file = os.path.join(filtrado_dir, filename)
+            
+            if os.path.exists(evidencias_file) and os.path.isfile(evidencias_file):
+                gestion_status = "green"
+            elif os.path.exists(filtrado_file) and os.path.isfile(filtrado_file):
+                gestion_status = "red"
+                
+        row_dict["audio_path"] = audio_path
+        row_dict["gestion"] = gestion_status
+        results.append(row_dict)
+
     return jsonify({
         "total":      total,
         "page":       page,
         "page_size":  PAGE_SIZE,
         "pages":      (total + PAGE_SIZE - 1) // PAGE_SIZE,
-        "results":    [dict(r) for r in rows],
+        "results":    results,
     })
+
 
 
 from flask import send_file

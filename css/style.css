@@ -534,3 +534,48 @@ audio::-webkit-media-controls-time-remaining-display {
 .fade-in {
   animation: fadeIn 0.2s ease-out forwards;
 }
+
+/* ── Traffic Light Circle (3D effect, no outer glow, no background gradients) ── */
+.cell-gestion {
+  text-align: center;
+  width: 70px;
+}
+
+.traffic-light-circle {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: inline-block;
+  vertical-align: middle;
+  border: 1px solid rgba(0, 0, 0, 0.5);
+  box-shadow: inset 0 2px 3px rgba(255, 255, 255, 0.35),
+              inset 0 -2px 3px rgba(0, 0, 0, 0.45);
+  position: relative;
+  background-color: var(--text-muted);
+}
+
+.traffic-light-circle.green {
+  background-color: #10b981;
+}
+
+.traffic-light-circle.red {
+  background-color: #ef4444;
+}
+
+.traffic-light-circle.yellow {
+  background-color: #f59e0b;
+}
+
+/* White highlight dot/reflection to look 3D sphere type */
+.traffic-light-circle::after {
+  content: "";
+  position: absolute;
+  top: 1.5px;
+  left: 2.5px;
+  width: 3.5px;
+  height: 1.5px;
+  background: rgba(255, 255, 255, 0.45);
+  border-radius: 50%;
+  pointer-events: none;
+}
+

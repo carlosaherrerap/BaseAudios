@@ -13,8 +13,8 @@ const COLUMNS = [
   { key: "ORDER", label: "Nº" },
   { key: "TELEFONO", label: "Teléfono", special: "telefono" },
   { key: "PESO", label: "Peso", special: "peso" },
-  { key: "RUTA", label: "Ruta", special: "ruta" },
-  { key: "NOMBRE_COMPLETO", label: "Nombre Completo", special: "nombre" },
+  { key: "audio_path", label: "Audio", special: "audio_path" },
+  { key: "gestion", label: "Gestión", special: "gestion" },
   { key: "AUDIO", label: "Reproductor", special: "audio" },
 ];
 
@@ -134,12 +134,15 @@ function renderTable(rows, query) {
         return `<td class="cell-peso">${escapeHtml(text)}</td>`;
       }
 
-      if (c.special === "ruta") {
+      if (c.special === "audio_path") {
         return `<td class="cell-ruta">${escapeHtml(String(val || '—'))}</td>`;
       }
 
-      if (c.special === "nombre") {
-        return `<td class="cell-nombre">${escapeHtml(String(val || '—'))}</td>`;
+      if (c.special === "gestion") {
+        const status = String(val).toLowerCase();
+        return `<td class="cell-gestion">
+          <span class="traffic-light-circle ${status}" title="Estado: ${status}"></span>
+        </td>`;
       }
 
       if (c.special === "audio") {
