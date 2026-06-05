@@ -37,13 +37,15 @@ def get_connection():
 @app.route("/api/buscar", methods=["GET"])
 def buscar():
     """
-    Búsqueda por TELEFONO.
+    Búsqueda por TELEFONO y filtrado opcional por MES.
     Query params:
         q     → número de teléfono (parcial o completo)
         page  → página de resultados (default: 1)
+        mes   → mes a buscar o "TODOS" (default: TODOS)
     """
     query  = request.args.get("q", "").strip()
     page   = max(1, int(request.args.get("page", 1)))
+    mes    = request.args.get("mes", "TODOS").strip().upper()
     offset = (page - 1) * PAGE_SIZE
 
     if not query:
@@ -52,29 +54,40 @@ def buscar():
     if len(query) < 3:
         return jsonify({"error": "Ingresa al menos 3 caracteres."}), 400
 
-    sql_data = """
+    # Construcción de la consulta dinámica
+    where_clauses = ['"TELEFONO" LIKE %s']
+    params = [f"{query}%"]
+
+    if mes != "TODOS":
+        where_clauses.append('"MES" = %s')
+        params.append(mes)
+
+    where_sql = " AND ".join(where_clauses)
+
+    sql_data = f"""
         SELECT
             "MES", "DIA", "INDICE", "YEAR",
             "COD1", "AoP", "COD2", "COD3",
             "TELEFONO", "PESO", "RUTA",
             "NOMBRE_COMPLETO", "BLOQUE_7"
         FROM "AUDIOS"
-        WHERE "TELEFONO" LIKE %s
+        WHERE {where_sql}
         ORDER BY "YEAR" DESC, "MES" DESC, "DIA" DESC
         LIMIT %s OFFSET %s
     """
-    sql_count = """
-        SELECT COUNT(*) FROM "AUDIOS" WHERE "TELEFONO" LIKE %s
+    sql_count = f"""
+        SELECT COUNT(*) FROM "AUDIOS" WHERE {where_sql}
     """
-    param_like = f"{query}%"   # Búsqueda por prefijo → usa el índice B-tree
+    
+    params_data = params + [PAGE_SIZE, offset]
 
     try:
         conn = get_connection()
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute(sql_count, (param_like,))
+            cur.execute(sql_count, tuple(params))
             total = cur.fetchone()["count"]
 
-            cur.execute(sql_data, (param_like, PAGE_SIZE, offset))
+            cur.execute(sql_data, tuple(params_data))
             rows = cur.fetchall()
         conn.close()
     except psycopg2.Error as e:

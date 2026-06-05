@@ -36,19 +36,39 @@
 
   <!-- ── Search ─────────────────────────────────────────────────── -->
   <div class="search-wrapper">
-    <i class="bi bi-search search-icon"></i>
-    <input
-      type="search"
-      id="searchInput"
-      placeholder="Escribe el número de teléfono para buscar..."
-      autocomplete="off"
-      spellcheck="false"
-      maxlength="20"
-      aria-label="Buscar por teléfono"
-    />
-    <button class="clear-btn" id="clearBtn" title="Limpiar búsqueda" aria-label="Limpiar">
-      <i class="bi bi-x-lg"></i>
-    </button>
+    <div class="search-input-group">
+      <i class="bi bi-search search-icon"></i>
+      <input
+        type="search"
+        id="searchInput"
+        placeholder="Escribe el número de teléfono para buscar..."
+        autocomplete="off"
+        spellcheck="false"
+        maxlength="20"
+        aria-label="Buscar por teléfono"
+      />
+      <button class="clear-btn" id="clearBtn" title="Limpiar búsqueda" aria-label="Limpiar">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    <div class="filter-group">
+      <i class="bi bi-calendar-event filter-icon"></i>
+      <select id="monthSelect" class="month-select" aria-label="Filtrar por mes">
+        <option value="TODOS">Todos los meses</option>
+        <option value="ENERO">Enero</option>
+        <option value="FEBRERO">Febrero</option>
+        <option value="MARZO">Marzo</option>
+        <option value="ABRIL">Abril</option>
+        <option value="MAYO">Mayo</option>
+        <option value="JUNIO">Junio</option>
+        <option value="JULIO">Julio</option>
+        <option value="AGOSTO">Agosto</option>
+        <option value="SEPTIEMBRE">Septiembre</option>
+        <option value="OCTUBRE">Octubre</option>
+        <option value="NOVIEMBRE">Noviembre</option>
+        <option value="DICIEMBRE">Diciembre</option>
+      </select>
+    </div>
   </div>
 
   <!-- ── Stats Bar ───────────────────────────────────────────────── -->

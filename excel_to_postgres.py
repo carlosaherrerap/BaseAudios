@@ -43,6 +43,10 @@ _sheet_raw   = os.getenv("SHEET_NAME", "0")
 SHEET_NAME   = int(_sheet_raw) if _sheet_raw.isdigit() else _sheet_raw  # 0 = primera hoja
 BATCH_SIZE   = int(os.getenv("BATCH_SIZE", 5000))  # filas por lote
 
+# Mes objetivo para la tabla particionada (ej: ENERO, FEBRERO, etc.)
+TARGET_MES   = os.getenv("TARGET_MES", "ENERO").upper().strip()
+TARGET_TABLE = f"AUDIOS_{TARGET_MES}"
+
 # Columnas esperadas A→M (13 columnas)
 EXPECTED_COLUMNS = [
     "MES", "DIA", "INDICE", "YEAR", "COD1",
@@ -51,8 +55,8 @@ EXPECTED_COLUMNS = [
 ]
 
 # ── SQL de inserción ───────────────────────────────────────────────────────────
-INSERT_SQL = """
-    INSERT INTO "AUDIOS" (
+INSERT_SQL = f"""
+    INSERT INTO "{TARGET_TABLE}" (
         "MES", "DIA", "INDICE", "YEAR", "COD1",
         "AoP", "COD2", "COD3", "TELEFONO", "PESO",
         "RUTA", "NOMBRE_COMPLETO", "BLOQUE_7"
@@ -130,6 +134,9 @@ def read_excel(path: str) -> pd.DataFrame:
     df.dropna(how="all", inplace=True)
     logger.info(f"Filas válidas tras limpieza: {len(df):,}")
 
+    # Forzar el mes de la variable de entorno para asegurar que inserte en la tabla correcta
+    df['MES'] = TARGET_MES
+    
     return df
 
 

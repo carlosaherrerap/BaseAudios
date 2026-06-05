@@ -30,6 +30,7 @@ const contentArea = document.getElementById("contentArea");
 const pagination = document.getElementById("pagination");
 const statusDot = document.getElementById("statusDot");
 const statusText = document.getElementById("statusText");
+const monthSelect = document.getElementById("monthSelect");
 
 // ── Health check ───────────────────────────────────────────────
 async function checkHealth() {
@@ -50,6 +51,7 @@ async function checkHealth() {
 async function search(query, page = 1) {
   state.query = query;
   state.page = page;
+  const selectedMonth = monthSelect.value;
 
   if (query.length === 0) {
     renderEmpty("default");
@@ -68,7 +70,7 @@ async function search(query, page = 1) {
   contentArea.style.opacity = "0.5";
 
   try {
-    const url = `${API_BASE}/buscar?q=${encodeURIComponent(query)}&page=${page}`;
+    const url = `${API_BASE}/buscar?q=${encodeURIComponent(query)}&page=${page}&mes=${encodeURIComponent(selectedMonth)}`;
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
@@ -272,6 +274,13 @@ clearBtn.addEventListener("click", () => {
   clearBtn.classList.remove("visible");
   search("");
   searchInput.focus();
+});
+
+monthSelect.addEventListener("change", () => {
+  // Re-trigger search when month changes if there's a valid query
+  if (state.query.length >= 3) {
+    search(state.query, 1);
+  }
 });
 
 // ── Init ───────────────────────────────────────────────────────
