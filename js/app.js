@@ -1,10 +1,9 @@
-// ── Configuración ──────────────────────────────────────────────
-// Detecta si se abrió directo (file://) o si se está usando un servidor local (Live Server 127.0.0.1/localhost)
+
 const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 const isFile = window.location.protocol === 'file:';
 
-const API_BASE = (isLocal || isFile) 
-  ? "http://localhost:5000/api" 
+const API_BASE = (isLocal || isFile)
+  ? "http://localhost:5000/api"
   : `${window.location.origin}/api`;
 
 const PAGE_SIZE = 10;
@@ -18,16 +17,15 @@ const COLUMNS = [
   { key: "SELECCIONAR", label: "Selección", special: "seleccionar" },
 ];
 
-// ── State ──────────────────────────────────────────────────────
-let state = { 
-  query: "", 
-  page: 1, 
-  totalPages: 1, 
+let state = {
+  query: "",
+  page: 1,
+  totalPages: 1,
   debounceTimer: null,
   selectedAudios: JSON.parse(localStorage.getItem("selectedAudios") || "[]")
 };
 
-// ── DOM refs ───────────────────────────────────────────────────
+
 const searchInput = document.getElementById("searchInput");
 const clearBtn = document.getElementById("clearBtn");
 const spinner = document.getElementById("spinner");
@@ -39,7 +37,7 @@ const statusText = document.getElementById("statusText");
 const monthSelect = document.getElementById("monthSelect");
 const sortSelect = document.getElementById("sortSelect");
 
-// DOM Refs Bolsa de Audios
+
 const bagBtn = document.getElementById("bagBtn");
 const bagCount = document.getElementById("bagCount");
 const bagModal = document.getElementById("bagModal");
@@ -50,7 +48,7 @@ const downloadAllBtn = document.getElementById("downloadAllBtn");
 const modalEmptyState = document.getElementById("modalEmptyState");
 const modalListContainer = document.getElementById("modalListContainer");
 
-// ── Health check ───────────────────────────────────────────────
+
 async function checkHealth() {
   try {
     const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(4000) });
@@ -65,7 +63,7 @@ async function checkHealth() {
   }
 }
 
-// ── Search ─────────────────────────────────────────────────────
+
 async function search(query, page = 1) {
   state.query = query;
   state.page = page;
@@ -116,7 +114,7 @@ async function search(query, page = 1) {
   }
 }
 
-// ── Render: Table ──────────────────────────────────────────────
+
 function renderTable(rows, query) {
   const thead = `<thead><tr>${COLUMNS.map(c =>
     `<th class="${c.special === "telefono" ? "col-telefono" : ""}">${c.label}</th>`
@@ -173,7 +171,7 @@ function renderTable(rows, query) {
           audioPlayerHtml = `
             <div class="audio-player-wrapper">
               <audio controls class="audio-player" src="${urlPath}" preload="none" title="${escapeHtml(fullPath)}">
-                Tu navegador no soporta el elemento de audio.
+                El navegador no soporta el elemento de audio.
               </audio>
             </div>
           `;
@@ -221,10 +219,10 @@ function renderTable(rows, query) {
 
 // ── Render: Empty states ───────────────────────────────────────
 const STATES = {
-  default: { icon: "bi-search", title: "Encuentra tus audios", desc: "Escribe el número de teléfono en la barra superior para explorar la base de datos." },
-  short: { icon: "bi-keyboard", title: "Sigue escribiendo...", desc: "Ingresa al menos 3 dígitos para obtener coincidencias precisas." },
-  noresults: { icon: "bi-inbox", title: "No hay coincidencias", desc: "No hemos encontrado ningún registro de audio asociado a ese número." },
-  error: { icon: "bi-plug-fill", title: "Error de conexión", desc: "No se pudo establecer conexión con el servidor de la API." },
+  default: { icon: "bi-search", title: "...", desc: "......" },
+  short: { icon: "bi-keyboard", title: "SUGERENCIA", desc: "Ingresa al menos 3 dígitos para empezar una busqueda" },
+  noresults: { icon: "bi-inbox", title: "No hay coincidencias", desc: "No se ha encontrado un audio para ese telefono" },
+  error: { icon: "bi-plug-fill", title: "Error de conexión", desc: "No se pudo establecer conexión con el servidor" },
 };
 
 // ── Bolsa de Audios (Lógica) ───────────────────────────────────
@@ -304,7 +302,7 @@ function renderSelectedList() {
 
 async function downloadAllSelected() {
   if (state.selectedAudios.length === 0) return;
-  
+
   const originalHtml = downloadAllBtn.innerHTML;
   downloadAllBtn.disabled = true;
   downloadAllBtn.textContent = "COMPRIMIENDO Y DESCARGANDO...";
@@ -318,11 +316,11 @@ async function downloadAllSelected() {
       },
       body: JSON.stringify({ paths: state.selectedAudios })
     });
-    
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-    
+
     const blob = await response.blob();
     const blobUrl = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -477,12 +475,12 @@ if (clearBagBtn) {
     state.selectedAudios = [];
     localStorage.setItem("selectedAudios", JSON.stringify(state.selectedAudios));
     updateBagCount();
-    
+
     // Restaurar estilos en los botones visibles
     document.querySelectorAll(".btn-select").forEach(btn => {
       btn.classList.remove("selected");
     });
-    
+
     renderSelectedList();
   });
 }
