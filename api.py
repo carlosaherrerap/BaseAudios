@@ -78,6 +78,7 @@ def buscar():
     page   = max(1, int(request.args.get("page", 1)))
     mes    = request.args.get("mes", "TODOS").strip().upper()
     sort   = request.args.get("sort", "DEFAULT").strip().upper()
+    tipo   = request.args.get("tipo", "TELEFONO").strip().upper()
 
     if not query:
         return jsonify({"error": "El parámetro 'q' es requerido."}), 400
@@ -92,7 +93,10 @@ def buscar():
     else:
         tables_to_query = [f'"AUDIOS_{mes}"']
 
-    where_sql = '"TELEFONO" LIKE %s'
+    if tipo == "DNI":
+        where_sql = '"BLOQUE_7" LIKE %s'
+    else:
+        where_sql = '"TELEFONO" LIKE %s'
     param_like = f"{query}%"
 
     # Construir SQL dinámico para soportar 1 o 12 tablas
