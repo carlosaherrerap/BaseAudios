@@ -302,45 +302,43 @@ function renderSelectedList() {
   });
 }
 
-async function downloadFile(path) {
-  const url = `${API_BASE}/audio?path=${encodeURIComponent(path)}`;
-  const response = await fetch(url, {
-    headers: {
-      'ngrok-skip-browser-warning': 'true'
-    }
-  });
-  if (!response.ok) throw new Error("Network response was not ok");
-  const blob = await response.blob();
-  const blobUrl = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  const filename = path.split('\\').pop() || 'audio.mp3';
-  a.href = blobUrl;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  window.URL.revokeObjectURL(blobUrl);
-}
-
 async function downloadAllSelected() {
   if (state.selectedAudios.length === 0) return;
   
   const originalHtml = downloadAllBtn.innerHTML;
   downloadAllBtn.disabled = true;
-  downloadAllBtn.textContent = "DESCARGANDO...";
+  downloadAllBtn.textContent = "COMPRIMIENDO Y DESCARGANDO...";
 
-  for (const path of state.selectedAudios) {
-    try {
-      await downloadFile(path);
-      // Wait 300ms between downloads to avoid browser blockages
-      await new Promise(resolve => setTimeout(resolve, 300));
-    } catch (err) {
-      console.error("Error downloading file:", path, err);
+  try {
+    const response = await fetch(`${API_BASE}/download_zip`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true"
+      },
+      body: JSON.stringify({ paths: state.selectedAudios })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
+    
+    const blob = await response.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = "audios_seleccionados.zip";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(blobUrl);
+  } catch (err) {
+    console.error("Error downloading ZIP:", err);
+    alert("Hubo un error al generar o descargar el archivo ZIP.");
+  } finally {
+    downloadAllBtn.disabled = false;
+    downloadAllBtn.innerHTML = originalHtml;
   }
-
-  downloadAllBtn.disabled = false;
-  downloadAllBtn.innerHTML = originalHtml;
 }
 
 function renderEmpty(type) {

@@ -1,22 +1,27 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AudiosDB — Búsqueda por Teléfono</title>
-  <meta name="description" content="Buscador de registros de audio por número de teléfono en la base de datos AUDIOSDB." />
-  
+  <meta name="description"
+    content="Buscador de registros de audio por número de teléfono en la base de datos AUDIOSDB." />
+
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet" />
-  
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400&display=swap"
+    rel="stylesheet" />
+
   <!-- Bootstrap Icons -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-  
+
   <!-- Custom CSS -->
   <link rel="stylesheet" href="css/style.css">
 </head>
+
 <body>
 
   <!-- ── Header ─────────────────────────────────────────────────── -->
@@ -25,16 +30,15 @@
       <img src="assets/logo-pixi.png" alt="AudiosDB Logo" />
     </div>
     <div class="header-text">
-      <h1>AudiosDB Pro</h1>
-      <p>Búsqueda inteligente y reproducción directa de registros de audio</p>
+      <h1>BASE DE DATOS DE AUDIOS</h1>
     </div>
-    
+
     <div class="header-controls">
       <div class="badge-status" id="statusBadge">
         <span class="dot" id="statusDot"></span>
         <span id="statusText">Conectando...</span>
       </div>
-      
+
       <button class="bag-btn" id="bagBtn" title="Ver bolsa de audios">
         <i class="bi bi-bag-fill"></i>
         <span>BOLSA DE AUDIOS</span>
@@ -47,24 +51,17 @@
   <div class="search-wrapper">
     <div class="search-input-group">
       <i class="bi bi-search search-icon"></i>
-      <input
-        type="search"
-        id="searchInput"
-        placeholder="Escribe el número de teléfono para buscar..."
-        autocomplete="off"
-        spellcheck="false"
-        maxlength="20"
-        aria-label="Buscar por teléfono"
-      />
+      <input type="search" id="searchInput" placeholder="Escribe el número de teléfono para buscar..."
+        autocomplete="off" spellcheck="false" maxlength="20" aria-label="Buscar por teléfono" />
       <button class="clear-btn" id="clearBtn" title="Limpiar búsqueda" aria-label="Limpiar">
         <i class="bi bi-x-lg"></i>
       </button>
     </div>
-    
+
     <div class="filter-group">
       <i class="bi bi-calendar-event filter-icon"></i>
       <select id="monthSelect" class="month-select" aria-label="Filtrar por mes">
-        <option value="TODOS">Todos los meses</option>
+        <option value="TODOS">--SELECCIONAR MES--</option>
         <option value="ENERO">Enero</option>
         <option value="FEBRERO">Febrero</option>
         <option value="MARZO">Marzo</option>
@@ -83,11 +80,11 @@
     <div class="filter-group">
       <i class="bi bi-sort-down filter-icon"></i>
       <select id="sortSelect" class="sort-select" aria-label="Ordenar resultados">
-        <option value="DEFAULT">Ordenar por defecto</option>
+        <option value="DEFAULT">FILTRO PARA AUDIOS</option>
         <option value="GESTION_EFECTIVA">GESTION EFECTIVA</option>
         <option value="SIN_TRANSCRIPCION">SIN TRANSCRIPCION</option>
         <option value="SIN_CONTACTO">SIN CONTACTO</option>
-        <option value="PESO">Peso (Mayor a menor)</option>
+        <option value="PESO">MAYO PESO</option>
       </select>
     </div>
   </div>
@@ -134,4 +131,5 @@
   <!-- Custom JS -->
   <script src="js/app.js"></script>
 </body>
+
 </html>

@@ -1,5 +1,7 @@
 import os
 import logging
+import zipfile
+import io
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import psycopg2
@@ -229,6 +231,50 @@ def serve_audio():
     except Exception as e:
         logger.error(f"Error sirviendo audio {audio_path}: {e}")
         return jsonify({"error": "Error al leer el archivo de audio."}), 500
+
+@app.route("/api/download_zip", methods=["POST"])
+def download_zip():
+    """Comprime una lista de rutas de audio en un único archivo ZIP en memoria y lo descarga."""
+    data = request.get_json()
+    if not data or "paths" not in data:
+        return jsonify({"error": "El parámetro 'paths' es requerido."}), 400
+        
+    paths = data["paths"]
+    if not paths:
+        return jsonify({"error": "La lista de rutas de audio está vacía."}), 400
+        
+    memory_file = io.BytesIO()
+    
+    try:
+        with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for file_path in paths:
+                clean_path = str(file_path).strip()
+                if not clean_path:
+                    continue
+                
+                # Asegurar la extensión .mp3 para buscar el archivo físico correcto
+                if not clean_path.lower().endswith(".mp3"):
+                    clean_path += ".mp3"
+                
+                if os.path.exists(clean_path) and os.path.isfile(clean_path):
+                    # Guardar solo el nombre del archivo dentro del zip
+                    arcname = os.path.basename(clean_path)
+                    zipf.write(clean_path, arcname=arcname)
+                else:
+                    logger.warning(f"Archivo de audio no encontrado para comprimir: {clean_path}")
+                    
+        memory_file.seek(0)
+        
+        return send_file(
+            memory_file,
+            mimetype="application/zip",
+            as_attachment=True,
+            download_name="audios_seleccionados.zip"
+        )
+    except Exception as e:
+        logger.error(f"Error generando archivo ZIP: {e}")
+        return jsonify({"error": "Error interno al generar el archivo ZIP."}), 500
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)
