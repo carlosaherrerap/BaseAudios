@@ -59,12 +59,23 @@ def get_connection():
     return psycopg2.connect(**DB_CONFIG)
 
 
+def parse_peso(peso_str):
+    if not peso_str:
+        return 0.0
+    try:
+        # Extract only digits and decimal points
+        clean = "".join(c for c in str(peso_str) if c.isdigit() or c == '.')
+        return float(clean) if clean else 0.0
+    except ValueError:
+        return 0.0
+
+
 @app.route("/api/buscar", methods=["GET"])
 def buscar():
     query  = request.args.get("q", "").strip()
     page   = max(1, int(request.args.get("page", 1)))
     mes    = request.args.get("mes", "TODOS").strip().upper()
-    offset = (page - 1) * PAGE_SIZE
+    sort   = request.args.get("sort", "DEFAULT").strip().upper()
 
     if not query:
         return jsonify({"error": "El parámetro 'q' es requerido."}), 400
@@ -98,16 +109,17 @@ def buscar():
         """)
         count_parts.append(f"SELECT COUNT(*) as c FROM {table} WHERE {where_sql}")
 
-    # Unir todas las consultas con UNION ALL
+    # Unir todas las consultas con UNION ALL.
+    # Usamos un límite alto de seguridad en base de datos para realizar la ordenación completa en memoria
     sql_data = " UNION ALL ".join(select_parts) + """
         ORDER BY "YEAR" DESC, "MES" DESC, "DIA" DESC
-        LIMIT %s OFFSET %s
+        LIMIT 10000
     """
     
     sql_count = f"SELECT SUM(c) as count FROM ({' UNION ALL '.join(count_parts)}) as total_counts"
 
     # Duplicar el parámetro para cada tabla en el UNION
-    params_data = [param_like] * len(tables_to_query) + [PAGE_SIZE, offset]
+    params_data = [param_like] * len(tables_to_query)
     params_count = [param_like] * len(tables_to_query)
 
     try:
@@ -161,13 +173,25 @@ def buscar():
         row_dict["gestion"] = gestion_status
         results.append(row_dict)
 
+    # Aplicar ordenación en memoria en Python
+    if sort == "PESO":
+        results.sort(key=lambda x: parse_peso(x.get("PESO")), reverse=True)
+    elif sort == "GESTION":
+        # Ordenación: verde (0) primero, rojo (1) segundo, amarillo (2) tercero
+        results.sort(key=lambda x: 0 if x["gestion"] == "green" else (1 if x["gestion"] == "red" else 2))
+
+    # Paginación manual en memoria
+    offset = (page - 1) * PAGE_SIZE
+    paginated_results = results[offset : offset + PAGE_SIZE]
+
     return jsonify({
         "total":      total,
         "page":       page,
         "page_size":  PAGE_SIZE,
         "pages":      (total + PAGE_SIZE - 1) // PAGE_SIZE,
-        "results":    results,
+        "results":    paginated_results,
     })
+
 
 
 

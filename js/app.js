@@ -15,11 +15,17 @@ const COLUMNS = [
   { key: "PESO", label: "Peso", special: "peso" },
   { key: "audio_path", label: "Audio", special: "audio_path" },
   { key: "gestion", label: "Gestión", special: "gestion" },
-  { key: "AUDIO", label: "Reproductor", special: "audio" },
+  { key: "SELECCIONAR", label: "Selección", special: "seleccionar" },
 ];
 
 // ── State ──────────────────────────────────────────────────────
-let state = { query: "", page: 1, totalPages: 1, debounceTimer: null };
+let state = { 
+  query: "", 
+  page: 1, 
+  totalPages: 1, 
+  debounceTimer: null,
+  selectedAudios: JSON.parse(localStorage.getItem("selectedAudios") || "[]")
+};
 
 // ── DOM refs ───────────────────────────────────────────────────
 const searchInput = document.getElementById("searchInput");
@@ -31,6 +37,18 @@ const pagination = document.getElementById("pagination");
 const statusDot = document.getElementById("statusDot");
 const statusText = document.getElementById("statusText");
 const monthSelect = document.getElementById("monthSelect");
+const sortSelect = document.getElementById("sortSelect");
+
+// DOM Refs Bolsa de Audios
+const bagBtn = document.getElementById("bagBtn");
+const bagCount = document.getElementById("bagCount");
+const bagModal = document.getElementById("bagModal");
+const closeModalBtn = document.getElementById("closeModalBtn");
+const selectedList = document.getElementById("selectedList");
+const clearBagBtn = document.getElementById("clearBagBtn");
+const downloadAllBtn = document.getElementById("downloadAllBtn");
+const modalEmptyState = document.getElementById("modalEmptyState");
+const modalListContainer = document.getElementById("modalListContainer");
 
 // ── Health check ───────────────────────────────────────────────
 async function checkHealth() {
@@ -52,6 +70,7 @@ async function search(query, page = 1) {
   state.query = query;
   state.page = page;
   const selectedMonth = monthSelect.value;
+  const selectedSort = sortSelect ? sortSelect.value : "DEFAULT";
 
   if (query.length === 0) {
     renderEmpty("default");
@@ -70,7 +89,7 @@ async function search(query, page = 1) {
   contentArea.style.opacity = "0.5";
 
   try {
-    const url = `${API_BASE}/buscar?q=${encodeURIComponent(query)}&page=${page}&mes=${encodeURIComponent(selectedMonth)}`;
+    const url = `${API_BASE}/buscar?q=${encodeURIComponent(query)}&page=${page}&mes=${encodeURIComponent(selectedMonth)}&sort=${encodeURIComponent(selectedSort)}`;
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
@@ -135,7 +154,37 @@ function renderTable(rows, query) {
       }
 
       if (c.special === "audio_path") {
-        return `<td class="cell-ruta">${escapeHtml(String(val || '—'))}</td>`;
+        const rutaStr = String(row["RUTA"] || "").trim();
+        const nombreStr = String(row["NOMBRE_COMPLETO"] || "").trim();
+        let audioPlayerHtml = "";
+
+        if (rutaStr && nombreStr && rutaStr !== "null" && nombreStr !== "null") {
+          let fullPath = rutaStr;
+          if (!fullPath.endsWith(nombreStr)) {
+            if (!fullPath.endsWith("\\") && !fullPath.endsWith("/")) {
+              fullPath += "\\";
+            }
+            fullPath += nombreStr;
+          }
+          if (!fullPath.toLowerCase().endsWith(".mp3")) {
+            fullPath += ".mp3";
+          }
+          const urlPath = `${API_BASE}/audio?path=${encodeURIComponent(fullPath)}`;
+          audioPlayerHtml = `
+            <div class="audio-player-wrapper">
+              <audio controls class="audio-player" src="${urlPath}" preload="none" title="${escapeHtml(fullPath)}">
+                Tu navegador no soporta el elemento de audio.
+              </audio>
+            </div>
+          `;
+        }
+
+        return `
+          <td class="cell-audio-combined">
+            <div class="audio-path-text">${escapeHtml(String(val || '—'))}</div>
+            ${audioPlayerHtml}
+          </td>
+        `;
       }
 
       if (c.special === "gestion") {
@@ -145,35 +194,17 @@ function renderTable(rows, query) {
         </td>`;
       }
 
-      if (c.special === "audio") {
-        const rutaStr = String(row["RUTA"] || "").trim();
-        const nombreStr = String(row["NOMBRE_COMPLETO"] || "").trim();
-
-        if (!rutaStr || !nombreStr || rutaStr === "null" || nombreStr === "null") {
-          return `<td><span style="color:var(--text-muted);font-size:0.8rem">No disponible</span></td>`;
-        }
-
-        let fullPath = rutaStr;
-        if (!fullPath.endsWith(nombreStr)) {
-          if (!fullPath.endsWith("\\") && !fullPath.endsWith("/")) {
-            fullPath += "\\";
-          }
-          fullPath += nombreStr;
-        }
-        
-        // Asegurarse de que siempre termine en .mp3
-        if (!fullPath.toLowerCase().endsWith(".mp3")) {
-          fullPath += ".mp3";
-        }
-
-        // Usar el endpoint de la API para servir el audio y evadir el error de 'Not allowed to load local resource'
-        const urlPath = `${API_BASE}/audio?path=${encodeURIComponent(fullPath)}`;
-
-        return `<td>
-           <audio controls class="audio-player" src="${urlPath}" preload="none" title="${escapeHtml(fullPath)}">
-              Tu navegador no soporta el elemento de audio.
-           </audio>
-        </td>`;
+      if (c.special === "seleccionar") {
+        const path = row["audio_path"] || "";
+        const isSelected = state.selectedAudios.includes(path);
+        const btnClass = isSelected ? "btn-select selected" : "btn-select";
+        return `
+          <td class="cell-action">
+            <button class="${btnClass}" data-path="${escapeHtml(path)}">
+              SELECCIONAR
+            </button>
+          </td>
+        `;
       }
 
       return `<td>${escapeHtml(String(val))}</td>`;
@@ -195,6 +226,98 @@ const STATES = {
   noresults: { icon: "bi-inbox", title: "No hay coincidencias", desc: "No hemos encontrado ningún registro de audio asociado a ese número." },
   error: { icon: "bi-plug-fill", title: "Error de conexión", desc: "No se pudo establecer conexión con el servidor de la API." },
 };
+
+// ── Bolsa de Audios (Lógica) ───────────────────────────────────
+function updateBagCount() {
+  if (bagCount) {
+    bagCount.textContent = state.selectedAudios.length;
+  }
+}
+
+function toggleSelectAudio(path, buttonEl) {
+  const idx = state.selectedAudios.indexOf(path);
+  if (idx > -1) {
+    state.selectedAudios.splice(idx, 1);
+    if (buttonEl) {
+      buttonEl.classList.remove("selected");
+    }
+  } else {
+    state.selectedAudios.push(path);
+    if (buttonEl) {
+      buttonEl.classList.add("selected");
+    }
+  }
+  updateBagCount();
+  localStorage.setItem("selectedAudios", JSON.stringify(state.selectedAudios));
+
+  // Actualizar botones visibles correspondientes a esta misma ruta
+  document.querySelectorAll(`.btn-select[data-path]`).forEach(btn => {
+    if (btn.dataset.path === path) {
+      if (state.selectedAudios.includes(path)) {
+        btn.classList.add("selected");
+      } else {
+        btn.classList.remove("selected");
+      }
+    }
+  });
+
+  if (bagModal && bagModal.open) {
+    renderSelectedList();
+  }
+}
+
+function renderSelectedList() {
+  if (!selectedList) return;
+  selectedList.innerHTML = "";
+
+  if (state.selectedAudios.length === 0) {
+    modalEmptyState.style.display = "flex";
+    modalListContainer.style.display = "none";
+    return;
+  }
+
+  modalEmptyState.style.display = "none";
+  modalListContainer.style.display = "block";
+
+  state.selectedAudios.forEach(path => {
+    const li = document.createElement("li");
+    li.className = "selected-item fade-in";
+
+    const span = document.createElement("span");
+    span.className = "item-path";
+    span.textContent = path;
+    span.title = path;
+
+    const removeBtn = document.createElement("button");
+    removeBtn.className = "remove-item-btn";
+    removeBtn.title = "Eliminar de la bolsa";
+    removeBtn.innerHTML = '<i class="bi bi-trash"></i>';
+    removeBtn.addEventListener("click", () => {
+      toggleSelectAudio(path);
+    });
+
+    li.appendChild(span);
+    li.appendChild(removeBtn);
+    selectedList.appendChild(li);
+  });
+}
+
+function downloadAllSelected() {
+  if (state.selectedAudios.length === 0) return;
+
+  state.selectedAudios.forEach((path, index) => {
+    setTimeout(() => {
+      const a = document.createElement('a');
+      const filename = path.split('\\').pop() || 'audio.mp3';
+      a.href = `${API_BASE}/audio?path=${encodeURIComponent(path)}`;
+      a.download = filename;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }, index * 500); // Descargas espaciadas por 500ms
+  });
+}
 
 function renderEmpty(type) {
   const s = STATES[type];
@@ -280,12 +403,75 @@ clearBtn.addEventListener("click", () => {
 });
 
 monthSelect.addEventListener("change", () => {
-  // Re-trigger search when month changes if there's a valid query
   if (state.query.length >= 3) {
     search(state.query, 1);
   }
 });
 
+if (sortSelect) {
+  sortSelect.addEventListener("change", () => {
+    if (state.query.length >= 3) {
+      search(state.query, 1);
+    }
+  });
+}
+
+// Event Delegation para Selección de Botón
+contentArea.addEventListener("click", (e) => {
+  if (e.target && e.target.classList.contains("btn-select")) {
+    const path = e.target.dataset.path;
+    toggleSelectAudio(path, e.target);
+  }
+});
+
+// Event Listeners Bolsa de Audios (Modal)
+if (bagBtn && bagModal) {
+  bagBtn.addEventListener("click", () => {
+    renderSelectedList();
+    bagModal.showModal();
+  });
+}
+
+if (closeModalBtn && bagModal) {
+  closeModalBtn.addEventListener("click", () => {
+    bagModal.close();
+  });
+}
+
+// Cerrar modal al hacer clic en el fondo de la pantalla (Light Dismiss)
+if (bagModal) {
+  bagModal.addEventListener("click", (e) => {
+    const rect = bagModal.getBoundingClientRect();
+    const isInDialog = (rect.top <= e.clientY && e.clientY <= rect.top + rect.height &&
+      rect.left <= e.clientX && e.clientX <= rect.left + rect.width);
+    if (!isInDialog) {
+      bagModal.close();
+    }
+  });
+}
+
+if (clearBagBtn) {
+  clearBagBtn.addEventListener("click", () => {
+    state.selectedAudios = [];
+    localStorage.setItem("selectedAudios", JSON.stringify(state.selectedAudios));
+    updateBagCount();
+    
+    // Restaurar estilos en los botones visibles
+    document.querySelectorAll(".btn-select").forEach(btn => {
+      btn.classList.remove("selected");
+    });
+    
+    renderSelectedList();
+  });
+}
+
+if (downloadAllBtn) {
+  downloadAllBtn.addEventListener("click", () => {
+    downloadAllSelected();
+  });
+}
+
 // ── Init ───────────────────────────────────────────────────────
 checkHealth();
 renderEmpty("default");
+updateBagCount();
