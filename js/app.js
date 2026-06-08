@@ -219,7 +219,7 @@ function renderTable(rows, query) {
 
 // ── Render: Empty states ───────────────────────────────────────
 const STATES = {
-  default: { icon: "bi-search", title: "...", desc: "......" },
+  default: { icon: "bi-search", title: "BASE", desc: "SIN BUSQUEDAS AUN" },
   short: { icon: "bi-keyboard", title: "SUGERENCIA", desc: "Ingresa al menos 3 dígitos para empezar una busqueda" },
   noresults: { icon: "bi-inbox", title: "No hay coincidencias", desc: "No se ha encontrado un audio para ese telefono" },
   error: { icon: "bi-plug-fill", title: "Error de conexión", desc: "No se pudo establecer conexión con el servidor" },
