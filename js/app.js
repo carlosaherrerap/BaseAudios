@@ -11,6 +11,7 @@ const PAGE_SIZE = 10;
 const COLUMNS = [
   { key: "ORDER", label: "Nº" },
   { key: "TELEFONO", label: "Teléfono", special: "telefono" },
+  { key: "BLOQUE_7", label: "DNI", special: "dni" },
   { key: "PESO", label: "Peso", special: "peso" },
   { key: "audio_path", label: "Audio", special: "audio_path" },
   { key: "gestion", label: "Gestión", special: "gestion" },
@@ -22,7 +23,8 @@ let state = {
   page: 1,
   totalPages: 1,
   debounceTimer: null,
-  selectedAudios: JSON.parse(localStorage.getItem("selectedAudios") || "[]")
+  selectedAudios: JSON.parse(localStorage.getItem("selectedAudios") || "[]"),
+  searchType: "TELEFONO"
 };
 
 
@@ -77,6 +79,9 @@ async function search(query, page = 1) {
     return;
   }
   if (query.length < 3) {
+    STATES.short.desc = state.searchType === "DNI"
+      ? "Ingresa al menos 3 dígitos del DNI para empezar una búsqueda"
+      : "Ingresa al menos 3 dígitos del teléfono para empezar una búsqueda";
     renderEmpty("short");
     resultsCount.innerHTML = "";
     pagination.innerHTML = "";
@@ -87,7 +92,7 @@ async function search(query, page = 1) {
   contentArea.style.opacity = "0.5";
 
   try {
-    const url = `${API_BASE}/buscar?q=${encodeURIComponent(query)}&page=${page}&mes=${encodeURIComponent(selectedMonth)}&sort=${encodeURIComponent(selectedSort)}`;
+    const url = `${API_BASE}/buscar?q=${encodeURIComponent(query)}&page=${page}&mes=${encodeURIComponent(selectedMonth)}&sort=${encodeURIComponent(selectedSort)}&tipo=${encodeURIComponent(state.searchType)}`;
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
@@ -95,6 +100,9 @@ async function search(query, page = 1) {
     state.totalPages = data.pages || 1;
 
     if (data.results.length === 0) {
+      STATES.noresults.desc = state.searchType === "DNI"
+        ? "No se ha encontrado un audio para ese DNI"
+        : "No se ha encontrado un audio para ese teléfono";
       renderEmpty("noresults");
       resultsCount.innerHTML = "";
       pagination.innerHTML = "";
@@ -116,9 +124,12 @@ async function search(query, page = 1) {
 
 
 function renderTable(rows, query) {
-  const thead = `<thead><tr>${COLUMNS.map(c =>
-    `<th class="${c.special === "telefono" ? "col-telefono" : ""}">${c.label}</th>`
-  ).join("")
+  const thead = `<thead><tr>${COLUMNS.map(c => {
+    let classes = "";
+    if (c.special === "telefono") classes = "col-telefono";
+    else if (c.special === "dni") classes = "col-dni";
+    return `<th class="${classes}">${c.label}</th>`;
+  }).join("")
     }</tr></thead>`;
 
   const tbody = `<tbody>${rows.map((row, index) => {
@@ -132,11 +143,27 @@ function renderTable(rows, query) {
       let val = row[c.key] ?? "";
 
       if (c.special === "telefono") {
-        const highlighted = String(val).replace(
-          new RegExp(`^(${escapeRegex(query)})`, "i"),
-          "<mark>$1</mark>"
-        );
-        return `<td class="cell-telefono">${highlighted || '—'}</td>`;
+        let cellContent = String(val).trim();
+        if (state.searchType === "TELEFONO" && query) {
+          const highlighted = String(val).replace(
+            new RegExp(`^(${escapeRegex(query)})`, "i"),
+            "<mark>$1</mark>"
+          );
+          cellContent = highlighted;
+        }
+        return `<td class="cell-telefono">${cellContent || '—'}</td>`;
+      }
+
+      if (c.special === "dni") {
+        let cellContent = String(val).trim();
+        if (state.searchType === "DNI" && query) {
+          const highlighted = String(val).replace(
+            new RegExp(`^(${escapeRegex(query)})`, "i"),
+            "<mark>$1</mark>"
+          );
+          cellContent = highlighted;
+        }
+        return `<td class="cell-dni">${cellContent || '—'}</td>`;
       }
 
       if (c.special === "peso") {
@@ -490,6 +517,35 @@ if (downloadAllBtn) {
     downloadAllSelected();
   });
 }
+
+// ── Search Type Switch Listeners ────────────────────────────────
+const searchTypeInputs = document.querySelectorAll('input[name="searchType"]');
+const searchTypeTelefonoBtn = document.getElementById("searchTypeTelefono");
+const searchTypeDniBtn = document.getElementById("searchTypeDni");
+
+searchTypeInputs.forEach(input => {
+  input.addEventListener("change", (e) => {
+    state.searchType = e.target.value;
+    
+    if (state.searchType === "TELEFONO") {
+      searchTypeTelefonoBtn.classList.add("active");
+      searchTypeDniBtn.classList.remove("active");
+      searchInput.placeholder = "Escribe el número de teléfono para buscar...";
+    } else {
+      searchTypeTelefonoBtn.classList.remove("active");
+      searchTypeDniBtn.classList.add("active");
+      searchInput.placeholder = "Escribe el DNI para buscar...";
+    }
+    
+    const q = searchInput.value.trim();
+    if (q.length >= 3) {
+      search(q, 1);
+    } else if (q.length > 0) {
+      // Re-evaluates warning message for current type
+      search(q, 1);
+    }
+  });
+});
 
 // ── Init ───────────────────────────────────────────────────────
 checkHealth();

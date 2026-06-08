@@ -875,4 +875,60 @@ audio::-webkit-media-controls-time-remaining-display {
   border-color: var(--text-secondary);
 }
 
+/* ── Search Type Switch (Segmented Button Group) ── */
+.search-type-container {
+  width: 100%;
+  max-width: 1400px;
+  display: flex;
+  margin-bottom: 0.75rem;
+}
+
+.search-type-group {
+  display: flex;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 3px;
+  gap: 2px;
+}
+
+.search-type-btn {
+  padding: 6px 16px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-radius: calc(var(--radius) - 1px);
+  cursor: pointer;
+  transition: background-color var(--transition), color var(--transition);
+  user-select: none;
+  text-align: center;
+}
+
+.search-type-btn:hover {
+  background-color: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.search-type-btn.active {
+  background-color: var(--brand-blue);
+  color: #ffffff;
+}
+
+/* ── DNI Column Monospace Font ── */
+.cell-dni {
+  font-family: monospace;
+  color: var(--text-primary);
+}
+
+.cell-dni mark {
+  background-color: var(--brand-blue);
+  color: #ffffff;
+  padding: 1px 3px;
+  border-radius: 2px;
+}
+
+th.col-dni {
+  color: var(--text-primary);
+}
+
 
