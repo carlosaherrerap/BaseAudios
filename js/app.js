@@ -302,21 +302,45 @@ function renderSelectedList() {
   });
 }
 
-function downloadAllSelected() {
-  if (state.selectedAudios.length === 0) return;
-
-  state.selectedAudios.forEach((path, index) => {
-    setTimeout(() => {
-      const a = document.createElement('a');
-      const filename = path.split('\\').pop() || 'audio.mp3';
-      a.href = `${API_BASE}/audio?path=${encodeURIComponent(path)}`;
-      a.download = filename;
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    }, index * 500); // Descargas espaciadas por 500ms
+async function downloadFile(path) {
+  const url = `${API_BASE}/audio?path=${encodeURIComponent(path)}`;
+  const response = await fetch(url, {
+    headers: {
+      'ngrok-skip-browser-warning': 'true'
+    }
   });
+  if (!response.ok) throw new Error("Network response was not ok");
+  const blob = await response.blob();
+  const blobUrl = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const filename = path.split('\\').pop() || 'audio.mp3';
+  a.href = blobUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(blobUrl);
+}
+
+async function downloadAllSelected() {
+  if (state.selectedAudios.length === 0) return;
+  
+  const originalHtml = downloadAllBtn.innerHTML;
+  downloadAllBtn.disabled = true;
+  downloadAllBtn.textContent = "DESCARGANDO...";
+
+  for (const path of state.selectedAudios) {
+    try {
+      await downloadFile(path);
+      // Wait 300ms between downloads to avoid browser blockages
+      await new Promise(resolve => setTimeout(resolve, 300));
+    } catch (err) {
+      console.error("Error downloading file:", path, err);
+    }
+  }
+
+  downloadAllBtn.disabled = false;
+  downloadAllBtn.innerHTML = originalHtml;
 }
 
 function renderEmpty(type) {

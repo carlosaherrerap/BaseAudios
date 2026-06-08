@@ -176,9 +176,15 @@ def buscar():
     # Aplicar ordenación en memoria en Python
     if sort == "PESO":
         results.sort(key=lambda x: parse_peso(x.get("PESO")), reverse=True)
-    elif sort == "GESTION":
-        # Ordenación: verde (0) primero, rojo (1) segundo, amarillo (2) tercero
-        results.sort(key=lambda x: 0 if x["gestion"] == "green" else (1 if x["gestion"] == "red" else 2))
+    elif sort == "GESTION_EFECTIVA":
+        # Verde primero (0), luego el resto (1)
+        results.sort(key=lambda x: 0 if x["gestion"] == "green" else 1)
+    elif sort == "SIN_CONTACTO":
+        # Rojo primero (0), luego el resto (1)
+        results.sort(key=lambda x: 0 if x["gestion"] == "red" else 1)
+    elif sort == "SIN_TRANSCRIPCION":
+        # Amarillo primero (0), luego el resto (1)
+        results.sort(key=lambda x: 0 if x["gestion"] == "yellow" else 1)
 
     # Paginación manual en memoria
     offset = (page - 1) * PAGE_SIZE
